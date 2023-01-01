@@ -24,7 +24,6 @@
 		margin: 5px 0px 5px 0px;
 		}
 		ul li:first-child {
-		/* li의 첫번째 요소 좌측에는 테두리 없애기 */
 		border-left: none;
 		}
 		
