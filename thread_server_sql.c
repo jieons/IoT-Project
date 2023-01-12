@@ -22,7 +22,7 @@
 #define SERVERPORT 3658
 #define BUFSIZE    1024
 
-HANDLE  hMutex;
+//HANDLE  hMutex;
 MYSQL* cons;
 bool temp = false;
 
@@ -31,6 +31,7 @@ typedef struct data {
 	float latitude, longtitude;
 	int id;
 	int batt_charge;
+	char time[50];
 }data;
 
 char buf[BUFSIZE + 1];
@@ -71,11 +72,11 @@ void sql(char mysqlip[], MYSQL* cons) {
 	dt = (data*)buf; // 문자열로 온 정보를 구조체로
 
 	if (temp == false) { //db 연결
-		mysql_real_connect(cons, mysqlip, MYSQLUSER, MYSQLPASSWORD, "gps", 0, NULL, 0) == NULL;
+		mysql_real_connect(cons, mysqlip, MYSQLUSER, MYSQLPASSWORD, "gps_test", 0, NULL, 0) == NULL;
 		temp = true;
 	}
 
-    //mysql_query(cons, "create database if not exists gps");
+	//mysql_query(cons, "create database if not exists gps");
 	/*mysql_query(cons,
 			  "create table if not exists info (id int not null, latitude float, longtitude float, batt_charge int");*/
 	int id = dt->id;
@@ -84,19 +85,21 @@ void sql(char mysqlip[], MYSQL* cons) {
 	int batt = dt->batt_charge;
 
 	char query[1000];
-	sprintf(query, "insert into gps.info values(%d, %f, %f, %d)", id, lat, lon, batt);
+	//if (lat > 0 && lon > 0) {
+		sprintf(query, "insert into gps_test.info values(%d, %f, %f, %s, %d)", id, lat, lon, dt->time, batt);
+	//}
 	temp = true;
 
 	int stat = mysql_query(cons, query);
-		if (stat != 0) {
-				fprintf(stderr, "%s\n", mysql_error(cons));
-				return 1;
-		}
-		//mysql_close(cons);
+	if (stat != 0) {
+		fprintf(stderr, "%s\n", mysql_error(cons));
+		return 1;
+	}
+	//mysql_close(cons);
 
-	/*else { //연결 실패 시
-			fprintf(stderr, "연결 오류 : %s\n", mysql_error(cons));
-		}*/
+/*else { //연결 실패 시
+		fprintf(stderr, "연결 오류 : %s\n", mysql_error(cons));
+	}*/
 }
 
 // 클라이언트와 데이터 통신
@@ -112,7 +115,7 @@ DWORD WINAPI ProcessClient(LPVOID arg)
 	addrlen = sizeof(clientaddr);
 	getpeername(client_sock, (SOCKADDR*)& clientaddr, &addrlen);
 	data* dt;
-	WaitForSingleObject(hMutex, INFINITE);
+	//WaitForSingleObject(hMutex, INFINITE);
 	while (1) {
 		// 데이터 받기
 		retval = recv(client_sock, buf, BUFSIZE, 0);
@@ -126,8 +129,8 @@ DWORD WINAPI ProcessClient(LPVOID arg)
 
 		// 받은 데이터 출력
 		buf[retval] = '\0';
-		printf("[TCP/ %s: \n%d] latitude : %f , longtitude : %f ,id : %d ,batt_charge : %d \n", inet_ntoa(clientaddr.sin_addr),
-			ntohs(clientaddr.sin_port), dt->latitude, dt->longtitude, dt->id, dt->batt_charge);
+		printf("[TCP/ %s: \n%d] latitude : %f , longtitude : %f ,id : %d ,batt_charge : %d, time : %s \n", inet_ntoa(clientaddr.sin_addr),
+			ntohs(clientaddr.sin_port), dt->latitude, dt->longtitude, dt->id, dt->batt_charge, dt->time);
 
 
 		// 데이터 보내기
@@ -138,7 +141,7 @@ DWORD WINAPI ProcessClient(LPVOID arg)
 		}
 		sql(MYSQLIP, cons);
 	}
-	ReleaseMutex(hMutex);
+	//ReleaseMutex(hMutex);
 	// closesocket()
 	closesocket(client_sock);
 	printf("[TCP 서버] 클라이언트 종료: IP 주소=%s, 포트 번호=%d\n",
@@ -163,7 +166,7 @@ int main(int argc, char* argv[])
 		return 1;
 
 	//뮤텍스
-	hMutex = CreateMutex(NULL, FALSE, NULL);
+	//hMutex = CreateMutex(NULL, FALSE, NULL);
 	// socket()
 	SOCKET listen_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (listen_sock == INVALID_SOCKET) err_quit("socket()");
@@ -199,12 +202,12 @@ int main(int argc, char* argv[])
 			break;
 		}
 
-		WaitForSingleObject(hMutex, INFINITE);
+		//WaitForSingleObject(hMutex, INFINITE);
 		// 접속한 클라이언트 정보 출력
 		printf("\n[TCP 서버] 클라이언트 접속: IP 주소=%s, 포트 번호=%d\n",
 			inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port));
 
-		ReleaseMutex(hMutex);
+		//ReleaseMutex(hMutex);
 
 		// 스레드 생성
 		hThread = CreateThread(NULL, 0, ProcessClient,
